@@ -1,0 +1,25 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Project:</h2>
+D:\Mps project\Receiver\receiver.uvproj
+Project File Date:  06/04/2015
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling receiver.c...
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TEST_KEYPAD?RECEIVER
+Program Size: data=41.0 xdata=0 code=2697
+creating hex file from "receiver"...
+"receiver" - 0 Error(s), 1 Warning(s).
+Build target 'Target 1'
+compiling receiver.c...
+linking...
+*** WARNING L16: UNCALLED SEGMENT, IGNORED FOR OVERLAY PROCESS
+    SEGMENT: ?PR?TEST_KEYPAD?RECEIVER
+Program Size: data=41.0 xdata=0 code=2697
+creating hex file from "receiver"...
+"receiver" - 0 Error(s), 1 Warning(s).

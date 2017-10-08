@@ -1,0 +1,107 @@
+C51 COMPILER V9.01   TRANSMITTER                                                           06/08/2015 13:51:17 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE TRANSMITTER
+OBJECT MODULE PLACED IN transmitter.OBJ
+COMPILER INVOKED BY: D:\Softwares\newkei\C51\BIN\C51.EXE transmitter.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include<regx51.h>
+   2          #define d_time 20
+   3          #define in P0
+   4          sbit out = P2^0;
+   5          sbit in1 = P0^0;
+   6          sbit in2 = P0^1;
+   7          sbit in3 = P0^2;
+   8          sbit in4 = P0^3;
+   9          
+  10          void Delay(unsigned int);
+  11          void rf_transmit(unsigned char);
+  12          void ready(void);
+  13          unsigned char h = 0;
+  14          
+  15          void main(void)
+  16          {
+  17   1              in = 0xFF; //setting it as an input port
+  18   1      
+  19   1              while(1) {
+  20   2              rf_transmit(in);
+  21   2              Delay(60);
+  22   2              }
+  23   1              while(1);
+  24   1              return;
+  25   1      }
+  26          
+  27          
+  28          void rf_transmit(unsigned char i)
+  29          {
+  30   1              ready();
+  31   1              out = i & 0x08;
+  32   1              Delay(d_time);
+  33   1              out = i & 0x04;
+  34   1              Delay(d_time);
+  35   1              out = i & 0x02;
+  36   1              Delay(d_time);
+  37   1              out = i & 0x01;
+  38   1              Delay(d_time);
+  39   1              out = 0;
+  40   1              Delay(20);
+  41   1      }
+  42          
+  43          
+  44          void ready()
+  45          {
+  46   1              out = 1;
+  47   1              Delay(100);
+  48   1              for (h = 0; h < 3;h++) {
+  49   2                      out = 0;
+  50   2                      Delay(d_time);
+  51   2                      out = 1;
+  52   2                      Delay(d_time);
+  53   2              }
+  54   1              out = 0;
+  55   1              Delay(d_time);
+C51 COMPILER V9.01   TRANSMITTER                                                           06/08/2015 13:51:17 PAGE 2   
+
+  56   1      }
+  57          
+  58          
+  59          
+  60          
+  61          
+  62          void Delay(unsigned int k)
+  63          {
+  64   1      //      while(k)
+  65   1      //      {
+  66   1      //      TMOD = 0x01;
+  67   1      //      TH0 = 0xFC;
+  68   1      //      TL0 = 0x66;
+  69   1      //      TR0 = 1;
+  70   1      //      while(TF0 == 0);
+  71   1      //      TR0  = 0;
+  72   1      //      TF0 = 0;
+  73   1      //      k--;
+  74   1      //      }
+  75   1       unsigned char l = 255;
+  76   1      while(k--)
+  77   1      {               while(l--);
+  78   2      l = 255;
+  79   2      
+  80   2      
+  81   2      }
+  82   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    127    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      1       1
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

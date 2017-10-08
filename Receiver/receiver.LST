@@ -1,0 +1,821 @@
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE RECEIVER
+OBJECT MODULE PLACED IN receiver.OBJ
+COMPILER INVOKED BY: D:\Softwares\newkei\C51\BIN\C51.EXE receiver.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          #include<reg51.h>
+   2          #define d_time 20 //time delay
+   3          #define lcd_dat P1               //lcd data port
+   4          sbit rs = P3^5;            //lcd cmd port
+   5          sbit rw = P3^6;                 //lcd cmd port
+   6          sbit en = P3^7;                 //lcd enable pin
+   7          sbit motorControl = P3^4;                         //lcd cmd port
+   8          
+   9          unsigned char number[14] ;
+  10          unsigned char count = 0;
+  11          unsigned char togglesms = 1;
+  12          unsigned char menucontrol = 0;
+  13          unsigned char onoff = 0;
+  14          unsigned char key = 0;
+  15          //Keypad Connections
+  16          sbit R1 = P2^0;
+  17          sbit R2 = P2^1;
+  18          sbit R3 = P2^2;
+  19          sbit R4 = P2^3;
+  20          sbit C1 = P2^4;
+  21          sbit C2 = P2^5;
+  22          sbit C3 = P2^6;
+  23          sbit C4 = P2^7;
+  24          //End Keypad Connections
+  25          
+  26          sbit in = P3^2; // the pin from which the data comes in
+  27          unsigned char previousstate;
+  28          
+  29          #define control ACC 
+  30          sbit three = control^3;
+  31          sbit two = control^2;
+  32          sbit one = control^1;
+  33          sbit zero = control^0;
+  34          unsigned char controlword; // for lcd
+  35          void Delay(unsigned int);
+  36          void rf_receive(void);
+  37          void ready(void);
+  38          //-----prototypes for lcd-----
+  39          void write_lcd(char);
+  40          void cmd_lcd(char);
+  41          void disp_lcd(char);
+  42          void init_lcd();
+  43          void str_lcd(char *s);
+  44          void int_lcd(unsigned int);
+  45          void float_lcd(float);
+  46          void welcome(void);
+  47          void display_ready(void);
+  48          void check_motor_status(void);
+  49          
+  50          //--------------------------
+  51          //-----prototype for keypad---
+  52          char Read_Keypad(void);
+  53          void test_keypad(void);
+  54          //----------------------------
+  55          //global variables
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 2   
+
+  56          unsigned char latest = 100;
+  57          unsigned char h = 0;
+  58          unsigned char i = 0;
+  59          unsigned char str; //for gsm
+  60          //-----------------------lcd code start----------------
+  61          void write_lcd(char dat)
+  62          {
+  63   1      lcd_dat = dat;
+  64   1      rw = 0;
+  65   1      en = 1; //for latching one byte info
+  66   1      en = 0; //clear for latching next info
+  67   1      Delay(2);
+  68   1      }
+  69          
+  70          void cmd_lcd(char cmd)
+  71          {
+  72   1      rs=0; //set cmd register
+  73   1      write_lcd(cmd);
+  74   1      }
+  75          
+  76          void disp_lcd(char c)
+  77          {
+  78   1      rs=1; //set data register
+  79   1      write_lcd(c);
+  80   1      }                                                                                        
+  81          void init_lcd()
+  82          {
+  83   1      cmd_lcd(0x02); //return cursor home
+  84   1      cmd_lcd(0x38); //8 bit mode of operation
+  85   1      cmd_lcd(0x0E); //display on cur off
+  86   1      cmd_lcd(0x01); //clr DDRAM (display data ram)
+  87   1      cmd_lcd(0x06); //shift cursor right after each character displayed
+  88   1      cmd_lcd(0x80); //begin disp from line 1 pos 0
+  89   1      }
+  90          
+  91          void str_lcd(char *s)
+  92          {
+  93   1      while(*s)
+  94   1       disp_lcd(*s++);
+  95   1      }
+  96           unsigned char i;
+  97          //--------------------------Lcd code end-----------------
+  98          
+  99          // -------------------- GSM code ------------------------
+ 100          
+ 101          void init_serial()        // Initialize serial port
+ 102          {
+ 103   1              TMOD = 0x20;         // Mode=2
+ 104   1              TH1 = 0xFD;             // 9600 baud
+ 105   1              //TL1 = 0xFD;              //As done in another code :p
+ 106   1              SCON = 0x50;      // Serial mode=1 ,8-Bit data,1 Stop bit ,1 Start bit, (TOTAL 10 bits) Receiving on
+ 107   1              TR1 = 1;             // Start timer
+ 108   1      }
+ 109          
+ 110          
+ 111          
+ 112          
+ 113          void transmit_data(unsigned char value)         // Function to transmit data through serial port
+ 114          {
+ 115   1                               
+ 116   1              SBUF = value;                // Store data in sbuf
+ 117   1                              
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 3   
+
+ 118   1              while(TI == 0);             // Wait till data transmit
+ 119   1              TI = 0;                            //after data is transmitted, turn TI to zero.
+ 120   1      
+ 121   1      
+ 122   1      
+ 123   1              
+ 124   1      }
+ 125          
+ 126           void sendstring(unsigned char *s)
+ 127          {
+ 128   1      while(*s)
+ 129   1       transmit_data(*s++);
+ 130   1      }
+ 131          
+ 132          void receive_data() interrupt 4  // Function to recieve data serialy from RS232 into microcontroller
+ 133           {
+ 134   1               str = SBUF;                       // Read sbuf
+ 135   1               RI = 0;                          // 
+ 136   1               //transmit_data(str);             // Transmit to HyperTerminal
+ 137   1               disp_lcd(str);
+ 138   1               
+ 139   1                              
+ 140   1       }
+ 141          
+ 142          
+ 143          void sendmessage(unsigned char *d)
+ 144          {
+ 145   1      
+ 146   1      unsigned char tl1 = 255;
+ 147   1      unsigned char tl2 = 255;
+ 148   1      init_serial();
+ 149   1      EA = 0;
+ 150   1      sendstring("AT+CMGS=\""); // send the SMS number
+ 151   1      sendstring(number);
+ 152   1      sendstring("\"");
+ 153   1      
+ 154   1      transmit_data(13);
+ 155   1      while(tl1--);
+ 156   1      transmit_data(10);
+ 157   1      tl1 = 255;              
+ 158   1      //Delay(50);
+ 159   1      
+ 160   1      while(tl1--)
+ 161   1      while(tl2--);
+ 162   1      sendstring(d); // SMS body
+ 163   1      //Delay(500);
+ 164   1      tl1 = 255;
+ 165   1      tl2 = 255;
+ 166   1      while(tl1--)
+ 167   1      while(tl2--);
+ 168   1      transmit_data(0x1A);
+ 169   1      transmit_data(0x0D);
+ 170   1      transmit_data(0x0A);
+ 171   1      
+ 172   1        
+ 173   1      //EA = 1;
+ 174   1      }
+ 175          
+ 176          void activatesms()
+ 177          {
+ 178   1      init_serial();
+ 179   1      EA = 0;
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 4   
+
+ 180   1      sendstring("AT+CMGF=1"); // send the SMS number
+ 181   1      transmit_data(0x1A);
+ 182   1      transmit_data(0x0D);
+ 183   1      transmit_data(0x0A);
+ 184   1      Delay(1000);
+ 185   1      
+ 186   1      EA = 1;}
+ 187          
+ 188          void main(void)
+ 189          {
+ 190   1                                      
+ 191   1              motorControl = 0;
+ 192   1              number[0] =  '+';
+ 193   1              number[1] = '9';
+ 194   1              number[2] =  '2';
+ 195   1              number[3] = '3';
+ 196   1              number[4] =  '3';
+ 197   1              number[5] = '2';
+ 198   1              number[6] =  '8';
+ 199   1              number[7] = '1';
+ 200   1              number[8] =  '8';
+ 201   1              number[9] = '5';
+ 202   1              number[10] = '1';
+ 203   1              number[11] =  '2';
+ 204   1              number[12] = '1';
+ 205   1              number[13] = 0;
+ 206   1              
+ 207   1      
+ 208   1              welcome();       //display welcome on the screen
+ 209   1      
+ 210   1                      init_serial();
+ 211   1          activatesms();
+ 212   1              Delay(1000);
+ 213   1              init_serial();
+ 214   1                      sendmessage("Project Turned on.");
+ 215   1              //test_keypad(); //test the keypad (display whatever pressed)
+ 216   1      
+ 217   1              init_lcd(); //initialize the lcd
+ 218   1      
+ 219   1              welcome();       //display welcome on the screen
+ 220   1      
+ 221   1              display_ready();        //display 'READY' on the lcd screen
+ 222   1               
+ 223   1              check_motor_status();      // check the status and display the required message
+ 224   1      
+ 225   1      
+ 226   1              
+ 227   1              
+ 228   1      }
+ 229          
+ 230          
+ 231          void ready(void) 
+ 232          {
+ 233   1              IE = 0x81; //enable external interrupt 0
+ 234   1              IT0 = 1; //set interrupt to be edge triggered
+ 235   1      }
+ 236          
+ 237          
+ 238          
+ 239          void rf_receive(void) interrupt 0
+ 240          {
+ 241   1      
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 5   
+
+ 242   1              // once the interrupts have been called, 
+ 243   1              // we disable the EA signal
+ 244   1              EA = 0;
+ 245   1              
+ 246   1              //recognize a pattern. 
+ 247   1              h = 3; // 3 times the loop runs
+ 248   1              Delay(10);
+ 249   1              for (h = 0 ; h < 3 ; h++) {
+ 250   2                      if (in == 0) {
+ 251   3                              Delay(20);
+ 252   3                              if (in == 1) {
+ 253   4                                      Delay(20);
+ 254   4                              }
+ 255   3                              else {
+ 256   4                              EA = 1;
+ 257   4                              return;
+ 258   4                              }
+ 259   3                      }
+ 260   2                      else {
+ 261   3                      EA =1 ;
+ 262   3                      return;
+ 263   3                      }
+ 264   2              }
+ 265   1      
+ 266   1              if(in == 1) {
+ 267   2                 EA = 1;
+ 268   2                      return;
+ 269   2              }
+ 270   1              if(latest == 100)
+ 271   1              {latest = 0;}
+ 272   1              Delay(d_time);
+ 273   1              three = in;
+ 274   1              controlword = ACC;
+ 275   1              Delay(d_time);
+ 276   1              ACC = controlword;
+ 277   1              two = in;
+ 278   1              controlword = ACC;
+ 279   1              Delay(d_time);
+ 280   1              ACC = controlword;
+ 281   1              one = in;
+ 282   1              controlword = ACC;
+ 283   1              Delay(d_time);
+ 284   1              ACC = controlword;
+ 285   1              zero = in;
+ 286   1              controlword = ACC;
+ 287   1              
+ 288   1              switch(controlword)
+ 289   1              {
+ 290   2              case 0:
+ 291   2              
+ 292   2              motorControl = 0;
+ 293   2              break;
+ 294   2      
+ 295   2      
+ 296   2              case 15:
+ 297   2              if(onoff == 0)
+ 298   2              motorControl = 1;
+ 299   2              break;
+ 300   2              }
+ 301   1      
+ 302   1      
+ 303   1      
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 6   
+
+ 304   1      
+ 305   1              EA = 1;
+ 306   1              return;
+ 307   1              
+ 308   1      }
+ 309          
+ 310          void Delay(unsigned int k)
+ 311          { 
+ 312   1      //      while(k)
+ 313   1      //      {
+ 314   1      //              TMOD = 0x01;
+ 315   1      //              TH0 = 0xFC;
+ 316   1      //              TL0 = 0x66;
+ 317   1      //              TR0 = 1;
+ 318   1      //              while(TF0 == 0);
+ 319   1      //              TR0  = 0;
+ 320   1      //              TF0 = 0;
+ 321   1      //              k--;
+ 322   1      //      }
+ 323   1      
+ 324   1       unsigned char l = 255;
+ 325   1      while(k--)
+ 326   1      {               while(l--);
+ 327   2      l = 255;
+ 328   2      
+ 329   2      
+ 330   2      }
+ 331   1      }
+ 332          //--------------keypad code start-------------------------
+ 333          char Read_Keypad()
+ 334          {
+ 335   1      
+ 336   1        C1=1;
+ 337   1        C2=1;
+ 338   1        C3=1;
+ 339   1        C4=1;
+ 340   1        R1=0;
+ 341   1        R2=1;
+ 342   1        R3=1;
+ 343   1        R4=1;
+ 344   1        if(C1==0){Delay(100);while(C1==0);return 'D';}
+ 345   1        if(C2==0){Delay(100);while(C2==0);return 'C';}
+ 346   1        if(C3==0){Delay(100);while(C3==0);return 'B';}
+ 347   1        if(C4==0){Delay(100);while(C4==0);return 'A';}
+ 348   1        R1=1;
+ 349   1        R2=0;
+ 350   1        R3=1;
+ 351   1        R4=1;
+ 352   1        if(C1==0){Delay(100);while(C1==0);return '#';}
+ 353   1        if(C2==0){Delay(100);while(C2==0);return '9';}
+ 354   1        if(C3==0){Delay(100);while(C3==0);return '6';}
+ 355   1        if(C4==0){Delay(100);while(C4==0);return '3';}
+ 356   1        R1=1;
+ 357   1        R2=1;
+ 358   1        R3=0;
+ 359   1        R4=1;
+ 360   1        if(C1==0){Delay(100);while(C1==0);return '0';}
+ 361   1        if(C2==0){Delay(100);while(C2==0);return '8';}
+ 362   1        if(C3==0){Delay(100);while(C3==0);return '5';}
+ 363   1        if(C4==0){Delay(100);while(C4==0);return '2';}
+ 364   1        R1=1;
+ 365   1        R2=1;
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 7   
+
+ 366   1        R3=1;
+ 367   1        R4=0;
+ 368   1        if(C1==0){Delay(100);while(C1==0);return '+';}
+ 369   1        if(C2==0){Delay(100);while(C2==0);return '7';}
+ 370   1        if(C3==0){Delay(100);while(C3==0);return '4';}
+ 371   1        if(C4==0){Delay(100);while(C4==0);return '1';}
+ 372   1      
+ 373   1        
+ 374   1        return 0;
+ 375   1      }
+ 376          
+ 377          //----------keypad testing-------
+ 378          void test_keypad(void)
+ 379          {
+ 380   1              char z;
+ 381   1              init_lcd();
+ 382   1              cmd_lcd(0x80);
+ 383   1              str_lcd("WELCOME");
+ 384   1              Delay(500);
+ 385   1              cmd_lcd(0x01);
+ 386   1              cmd_lcd(0x80);
+ 387   1      
+ 388   1              while(1) {
+ 389   2                      while(!(z = Read_Keypad()));
+ 390   2                      disp_lcd(z);
+ 391   2              }
+ 392   1        return;
+ 393   1      }
+ 394          //-------------------keypad code end---------------------------
+ 395          
+ 396          void welcome(void)
+ 397          {
+ 398   1      
+ 399   1              for(i=0;i<16;i++) {
+ 400   2                      cmd_lcd(0x80+i);
+ 401   2                      str_lcd("WELCOME");
+ 402   2                      Delay (50);
+ 403   2                      cmd_lcd(0x01);
+ 404   2                      cmd_lcd(0x80);
+ 405   2              }
+ 406   1      }
+ 407          
+ 408          
+ 409          void display_ready(void)
+ 410          {
+ 411   1      
+ 412   1              cmd_lcd(0x01);
+ 413   1              cmd_lcd(0x80);
+ 414   1              str_lcd("Ready!");
+ 415   1              Delay(1000);
+ 416   1              return;
+ 417   1      }
+ 418          
+ 419          void check_motor_status(void)
+ 420          {
+ 421   1              
+ 422   1                                                
+ 423   1                                       
+ 424   1                                       
+ 425   1                                       
+ 426   1      //----------------------------------------
+ 427   1              motorControl = 0;
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 8   
+
+ 428   1        in = 1;
+ 429   1                              cmd_lcd(0x01);
+ 430   1                              cmd_lcd(0x80);
+ 431   1                              str_lcd("Connecting to");
+ 432   1                              cmd_lcd(0xC0);
+ 433   1                              
+ 434   1                              str_lcd("Transmitter");
+ 435   1                              Delay(500);
+ 436   1              ready();  // the receiver is ready
+ 437   1              
+ 438   1              while(latest==100)
+ 439   1              {
+ 440   2              
+ 441   2      
+ 442   2              }
+ 443   1              EA = 0;
+ 444   1              cmd_lcd(0x01);
+ 445   1                              cmd_lcd(0x80);
+ 446   1                              str_lcd("Connected");
+ 447   1                              cmd_lcd(0xC0);
+ 448   1                              
+ 449   1                              str_lcd("........");
+ 450   1                              Delay(1000);
+ 451   1                              EA =1;
+ 452   1              while(1) {
+ 453   2              
+ 454   2              if(onoff == 1 && latest != 1 )
+ 455   2              motorControl = 1;
+ 456   2              if(onoff == 2)
+ 457   2              motorControl = 0;
+ 458   2      //Start of if(!menucontrol)
+ 459   2              if(!menucontrol)
+ 460   2              {
+ 461   3              //Start of switch(controlword)  
+ 462   3                switch(controlword)
+ 463   3                      {       
+ 464   4                              case 0 :  //If output is 0000 0000b
+ 465   4                                                                      //water level high      , 4/4
+ 466   4                                                                      //send message to LCD
+ 467   4                              if (latest == 1){break;}
+ 468   4                              EA = 0;
+ 469   4                              cmd_lcd(0x01);
+ 470   4                              cmd_lcd(0x80);
+ 471   4                              str_lcd("Full");
+ 472   4                              cmd_lcd(0xC0);
+ 473   4                              str_lcd("4/4 ");
+ 474   4                              motorControl = 0;
+ 475   4                                      if(motorControl)
+ 476   4                      str_lcd("Motor On");
+ 477   4                      else
+ 478   4                      str_lcd("Motor Off");
+ 479   4                              Delay(1000);
+ 480   4                              latest = 1;
+ 481   4                              ready();
+ 482   4                              
+ 483   4                      
+ 484   4                              
+ 485   4                                      //SEND SMS
+ 486   4                                      if(togglesms)
+ 487   4                                      {
+ 488   5                              //activatesms();
+ 489   5                              //Delay(1000);
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 9   
+
+ 490   5                              //init_serial();
+ 491   5                              sendmessage("Motor Turned Off. Tank is full.");
+ 492   5                              togglesms = 0;
+ 493   5                              
+ 494   5      
+ 495   5                                      }
+ 496   4                                      //END OF SEND SMS
+ 497   4                              
+ 498   4                              break;
+ 499   4      
+ 500   4                              case 1:   // If output is 0000 0001b
+ 501   4                                                                      //water level   medium, 3/4
+ 502   4                              if(latest == 2) {break;}
+ 503   4                                                                      //send message to LCD   
+ 504   4                              EA  = 0;
+ 505   4                              togglesms = 1;
+ 506   4                              cmd_lcd(0x01);
+ 507   4                              cmd_lcd(0x80);
+ 508   4                              str_lcd("High");
+ 509   4                              cmd_lcd(0xC0);
+ 510   4                              str_lcd("3/4 ");
+ 511   4                              
+ 512   4                              
+ 513   4                      if(onoff == 1)
+ 514   4                      {
+ 515   5                      str_lcd("Motor On");
+ 516   5                      }
+ 517   4      
+ 518   4                              else if(motorControl)
+ 519   4                      str_lcd("Motor On");
+ 520   4                      else
+ 521   4                      str_lcd("Motor Off");
+ 522   4      
+ 523   4                              
+ 524   4                              latest = 2;
+ 525   4                          ready();
+ 526   4                              break;
+ 527   4      
+ 528   4                              case 3:   //If output is 0000 0011b
+ 529   4                                                                      //water level medium, 2/4
+ 530   4                      //send message to LCD
+ 531   4                                      togglesms = 1;
+ 532   4                              if(latest == 3) {break;}
+ 533   4                              EA = 0 ;
+ 534   4                              cmd_lcd(0x01);
+ 535   4                              cmd_lcd(0x80);
+ 536   4                              str_lcd("Medium");
+ 537   4                              cmd_lcd(0xC0);
+ 538   4                              str_lcd("2/4 ");
+ 539   4                                      
+ 540   4                                      if(motorControl)
+ 541   4                      str_lcd("Motor On");
+ 542   4                      else
+ 543   4                      str_lcd("Motor Off");
+ 544   4                      
+ 545   4                              latest = 3;
+ 546   4                              ready();
+ 547   4      
+ 548   4      
+ 549   4                              break;
+ 550   4      
+ 551   4                              case 7:  //If output is 0000 0111b
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 10  
+
+ 552   4      
+ 553   4                              if(latest == 4) {break;}
+ 554   4                                                                      // Water level low, 1/4
+ 555   4                              EA = 0;   //send message to LCD
+ 556   4                              cmd_lcd(0x01);
+ 557   4                              cmd_lcd(0x80);
+ 558   4                              str_lcd("Low");
+ 559   4                              cmd_lcd(0xC0);
+ 560   4                              str_lcd("1/4 ");
+ 561   4                              if(onoff == 0)
+ 562   4                                      motorControl = 1;
+ 563   4                                      if(motorControl)
+ 564   4                      str_lcd("Motor On");
+ 565   4                      else
+ 566   4                      str_lcd("Motor Off");
+ 567   4                              Delay(1000);
+ 568   4                                              
+ 569   4                              latest = 4;
+ 570   4                              ready();
+ 571   4                              break;
+ 572   4      
+ 573   4                              case 15: // If output is 0000 1111b
+ 574   4                                                               //send message to LCD 
+ 575   4                              if(latest == 5) {break;}
+ 576   4                              EA = 0;
+ 577   4                      cmd_lcd(0x01);
+ 578   4                      cmd_lcd(0x80);
+ 579   4                      str_lcd("Empty");
+ 580   4                      cmd_lcd(0xC0);
+ 581   4                      str_lcd("0/4 ");
+ 582   4                      if(motorControl)
+ 583   4                      str_lcd("Motor On");
+ 584   4                      else
+ 585   4                      str_lcd("Motor Off");
+ 586   4      
+ 587   4                      Delay(1000);
+ 588   4              
+ 589   4              if(onoff == 0)
+ 590   4      {
+ 591   5                      motorControl = 1;
+ 592   5                              if(togglesms)
+ 593   5                                      {
+ 594   6                              //activatesms();
+ 595   6                              //Delay(1000);
+ 596   6                              //init_serial();
+ 597   6                              sendmessage("Motor Turned On. Tank is Empty.");
+ 598   6                              
+ 599   6      
+ 600   6                                      }
+ 601   5                                      togglesms = 0;
+ 602   5                      }
+ 603   4                      latest = 5;
+ 604   4                      ready();
+ 605   4                      break;
+ 606   4      
+ 607   4              default:
+ 608   4                      if(latest == 6) {break;}        //Send error message.
+ 609   4                      EA = 0;
+ 610   4                      cmd_lcd(0x01);
+ 611   4                      cmd_lcd(0x80);
+ 612   4                      str_lcd("Error: Check");
+ 613   4                              cmd_lcd(0xC0);
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 11  
+
+ 614   4                      str_lcd("transmitter.");
+ 615   4                      Delay(1000);
+ 616   4                      motorControl = 0;
+ 617   4                      latest = 6;
+ 618   4                      ready();
+ 619   4                      break;  
+ 620   4              }
+ 621   3              //end of switch controlword
+ 622   3      
+ 623   3               }
+ 624   2               //end of if menucontrol
+ 625   2               EA = 0;
+ 626   2               key = 0 ;       
+ 627   2               key = Read_Keypad();
+ 628   2               EA = 1;
+ 629   2               
+ 630   2      
+ 631   2               //Start of if key != 0
+ 632   2               if(key != 0)
+ 633   2               {
+ 634   3               
+ 635   3               //Start of if menucontrol == 0
+ 636   3               if(menucontrol == 0)
+ 637   3               {
+ 638   4               menucontrol = 1;
+ 639   4               key = 0;
+ 640   4               EA = 0;
+ 641   4                      cmd_lcd(0x01);
+ 642   4                      cmd_lcd(0x80);
+ 643   4                      if(onoff == 0)
+ 644   4                      str_lcd("Menu:(1)ON(2)OFF");
+ 645   4                      else
+ 646   4                      str_lcd ("(1,2)AutoEnable")     ;
+ 647   4                      cmd_lcd(0xC0);
+ 648   4                      str_lcd("(3)Change Number");
+ 649   4                      latest = 0;
+ 650   4                      EA = 1;
+ 651   4               
+ 652   4               }
+ 653   3                //End of if menucontrol == 0
+ 654   3      
+ 655   3               else if(menucontrol == 1)
+ 656   3               {
+ 657   4               menucontrol = 0;
+ 658   4               
+ 659   4               switch(key)
+ 660   4               {
+ 661   5               case '1':
+ 662   5      
+ 663   5                if(onoff == 0)
+ 664   5                {
+ 665   6               EA = 0;
+ 666   6              cmd_lcd(0x01);
+ 667   6              cmd_lcd(0x80);
+ 668   6              str_lcd("Turned on");
+ 669   6              cmd_lcd(0xC0);
+ 670   6              str_lcd("Auto-disabled");               
+ 671   6              Delay(1500);
+ 672   6              latest = 0;
+ 673   6              EA = 1;
+ 674   6               onoff = 1;
+ 675   6               }
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 12  
+
+ 676   5               else
+ 677   5               {
+ 678   6                EA = 0;
+ 679   6              cmd_lcd(0x01);
+ 680   6              cmd_lcd(0x80);
+ 681   6              str_lcd("Autoenabled");
+ 682   6              cmd_lcd(0xC0);
+ 683   6              str_lcd("-----------");         
+ 684   6              Delay(1500);
+ 685   6              latest = 0;
+ 686   6              EA = 1;
+ 687   6               onoff = 0;
+ 688   6               }
+ 689   5               break;
+ 690   5               case  '2':        
+ 691   5               if(onoff == 0)
+ 692   5                {
+ 693   6               EA = 0;
+ 694   6              cmd_lcd(0x01);
+ 695   6              cmd_lcd(0x80);
+ 696   6              str_lcd("Turned off");
+ 697   6              cmd_lcd(0xC0);
+ 698   6              str_lcd("Auto-disabled");               
+ 699   6              Delay(1500);
+ 700   6              latest = 0;
+ 701   6              EA = 1;
+ 702   6               onoff = 2;
+ 703   6               }
+ 704   5               else
+ 705   5               {
+ 706   6                EA = 0;
+ 707   6              cmd_lcd(0x01);
+ 708   6              cmd_lcd(0x80);
+ 709   6              str_lcd("Autoenabled");
+ 710   6              cmd_lcd(0xC0);
+ 711   6              str_lcd("-.-.-.-.-.-.-.-.-.-.-");               
+ 712   6              Delay(1500);
+ 713   6              latest = 0;
+ 714   6              EA = 1;
+ 715   6               onoff = 0;
+ 716   6               }
+ 717   5               break;
+ 718   5              case '3':
+ 719   5              EA = 0;
+ 720   5              menucontrol = 2;
+ 721   5              
+ 722   5              cmd_lcd(0x01);
+ 723   5              cmd_lcd(0x80);
+ 724   5              str_lcd("Enter new number:");
+ 725   5              cmd_lcd(0xC0);
+ 726   5              count = 0;
+ 727   5              
+ 728   5              latest = 0;
+ 729   5                      
+ 730   5               
+ 731   5               EA =1;
+ 732   5              break;
+ 733   5               
+ 734   5               }//End of switch key
+ 735   4               }//End of menucontrol == 1
+ 736   3      
+ 737   3               else if(menucontrol == 2)
+C51 COMPILER V9.01   RECEIVER                                                              06/08/2015 13:57:53 PAGE 13  
+
+ 738   3               {
+ 739   4               if(count == 13)
+ 740   4               {
+ 741   5               number[13] = 0;
+ 742   5               }
+ 743   4               if(count < 13)
+ 744   4               {
+ 745   5               *(number+count) = key;
+ 746   5               disp_lcd(number[count]);
+ 747   5                count++;
+ 748   5               }
+ 749   4               else
+ 750   4               {
+ 751   5               latest = 0;
+ 752   5               menucontrol = 0;
+ 753   5               EA  = 0;
+ 754   5                      cmd_lcd(0x01);
+ 755   5              cmd_lcd(0x80);
+ 756   5              str_lcd("New number:");
+ 757   5              cmd_lcd(0xC0);
+ 758   5              str_lcd(number);
+ 759   5              Delay(1000);
+ 760   5              EA = 1;
+ 761   5              
+ 762   5      
+ 763   5      
+ 764   5               }
+ 765   4               }
+ 766   3      
+ 767   3               }
+ 768   2               //End if key != 0
+ 769   2                //EA = 1;
+ 770   2      }//End of while 1
+ 771   1      
+ 772   1      
+ 773   1      
+ 774   1      }//End of main
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2075    ----
+   CONSTANT SIZE    =    423    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     25      10
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,374 @@
+C51 COMPILER V9.01   TEST                                                                  06/07/2015 17:59:11 PAGE 1   
+
+
+C51 COMPILER V9.01, COMPILATION OF MODULE TEST
+OBJECT MODULE PLACED IN test.OBJ
+COMPILER INVOKED BY: D:\Softwares\newkei\C51\BIN\C51.EXE test.c BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          // Function Declarations
+   2          #include <reg51.h>
+   3                                                            // Library Functions
+   4          
+   5          void lcd_init();
+   6          void lcd_data(unsigned char);
+   7          void lcd_string(unsigned char[]);
+   8          void lcd_cmd(unsigned char);
+   9          void lcd_num(unsigned int);
+  10          
+  11          // Port Declarations
+  12          #define lcd P1
+  13          
+  14          sbit rs=P1^2;
+  15          sbit en=P1^3;
+  16          
+  17          void uart_init(void);
+  18          void uart_data(unsigned char);
+  19          void uart_string(unsigned char []);
+  20          void uart_num(unsigned int);
+  21          void uart_enter(void);
+  22          void uart_delay(unsigned int);
+  23          unsigned char uart_rx();
+  24          
+  25          // Function Intializations
+  26          
+  27          // UART_INIT();
+  28          void uart_init()
+  29          {
+  30   1              TMOD=0x20;
+  31   1              SCON=0x50;
+  32   1              TH1=0xFD;
+  33   1              TR1=1;
+  34   1      }
+  35          
+  36          // UART_DATA();
+  37          void uart_data(unsigned char mad)
+  38          {
+  39   1              SBUF=mad;
+  40   1              while(TI==0);
+  41   1              TI=0;
+  42   1      }
+  43          
+  44          // UART_STRING();
+  45          void uart_string(unsigned char mad[])
+  46          {
+  47   1              unsigned int j;
+  48   1      
+  49   1              for(j=0;mad[j]!='\0';j++)
+  50   1                      uart_data(mad[j]);
+  51   1      }
+  52          
+  53          // UART_ENTER();
+  54          void uart_enter()
+  55          {
+C51 COMPILER V9.01   TEST                                                                  06/07/2015 17:59:11 PAGE 2   
+
+  56   1              uart_data(13);
+  57   1              uart_delay(10);
+  58   1              uart_data(10);
+  59   1      }
+  60          
+  61          // UART_DELAY();
+  62          void uart_delay(unsigned int mad)
+  63          {
+  64   1              unsigned int i,j;
+  65   1              for(i=0;i<mad;i++)
+  66   1              for(j=0;j<100;j++);
+  67   1      }
+  68          
+  69          // UART_RX();
+  70          unsigned char uart_rx()
+  71          {
+  72   1      
+  73   1       unsigned char ch;
+  74   1       while(RI==0);
+  75   1       ch=SBUF;
+  76   1       return (ch);
+  77   1      }
+  78          
+  79          
+  80          
+  81                                                                                                                                                                          unsigned char xx,msg[15],mobilenum[10];
+  82          unsigned char newmsg=0;
+  83          
+  84          void gsm_init(void);
+  85          void gsm_readmsg(void);
+  86          void gsm_sendmsg(unsigned char mad[]);
+  87          void gsm_sendmsg_mob(unsigned char[],unsigned char[]);
+  88          
+  89          void serial(void) interrupt 4
+  90          {
+  91   1              if(RI==1)
+  92   1              {
+  93   2                      xx=SBUF;
+  94   2                      if(xx=='+')
+  95   2                              newmsg=1;
+  96   2                      RI=0;
+  97   2              }
+  98   1      }
+  99          
+ 100          void gsm_init(void)
+ 101          {
+ 102   1              lcd_string("WELCOME");
+ 103   1              delay(1000);
+*** WARNING C206 IN LINE 103 OF TEST.C: 'delay': missing function-prototype
+*** ERROR C267 IN LINE 103 OF TEST.C: 'delay': requires ANSI-style prototype
+ 104   1              lcd_cmd(0x01);
+ 105   1              lcd_string("Searching for");
+ 106   1              lcd_cmd(0xc0);
+ 107   1              lcd_string("GSM Modem");
+ 108   1              delay(300);
+ 109   1              uart_string("ate0");
+ 110   1              uart_enter();
+ 111   1      
+ 112   1              again:  
+ 113   1                      uart_string("at");
+ 114   1                      uart_enter();
+ 115   1                      if(!RI)
+C51 COMPILER V9.01   TEST                                                                  06/07/2015 17:59:11 PAGE 3   
+
+ 116   1                              goto again;
+ 117   1      
+ 118   1                      RI=0;
+ 119   1      
+ 120   1                      EA=1;
+ 121   1                      ES=1;
+ 122   1                      lcd_cmd(0x01);
+ 123   1                      lcd_string("SYSTEM");
+ 124   1                      lcd_cmd(0xc0);
+ 125   1                      lcd_string("CONNECTED");
+ 126   1                      delay(100);
+ 127   1                      uart_string("at+creg=0");
+ 128   1                      uart_enter();
+ 129   1                      delay(300);
+ 130   1                      newmsg=0;
+ 131   1      
+ 132   1              xxx:
+ 133   1                      lcd_cmd(0x01);
+ 134   1                      lcd_string("CHECKING SIM");
+ 135   1                      uart_string("at+cpin?");
+ 136   1                      uart_enter();
+ 137   1                      delay(500);
+ 138   1                      if(newmsg==0)
+ 139   1                              goto xxx;
+ 140   1      
+ 141   1                      lcd_cmd(0xc0);
+ 142   1                      lcd_string("SIM CONNECTED");
+ 143   1                      delay(500);
+ 144   1      
+ 145   1                      uart_string("at+cmgf=1");
+ 146   1                      uart_enter();
+ 147   1      
+ 148   1                      uart_string("at+cmgd=1");
+ 149   1                      uart_enter();
+ 150   1      
+ 151   1                      uart_string("at+cmgd=2");
+ 152   1                      uart_enter();
+ 153   1                      
+ 154   1                      uart_string("at+cmgd=3");
+ 155   1                      uart_enter();
+ 156   1      
+ 157   1                      delay(500);
+ 158   1      
+ 159   1                      lcd_cmd(1);
+ 160   1                      lcd_string("SYSTEM READY");
+ 161   1                      delay(1000);
+ 162   1      
+ 163   1                      /*newmsg=0;
+ 164   1                      while(newmsg==0);
+ 165   1                      ES=0;
+ 166   1                      gsm_readmsg();
+ 167   1                      delay(1500);*/
+ 168   1      }
+ 169          
+ 170          void gsm_readmsg(void)         
+ 171          {
+ 172   1       unsigned char a,b,i,count,numcnt;
+ 173   1        delay(100);
+ 174   1       ES=1;
+ 175   1       delay(300);
+ 176   1       ES=0;
+ 177   1        
+C51 COMPILER V9.01   TEST                                                                  06/07/2015 17:59:11 PAGE 4   
+
+ 178   1       while(RI==1)
+ 179   1        {
+ 180   2          RI=0;
+ 181   2          delay(100);
+ 182   2         }
+ 183   1       
+ 184   1       lcd_cmd(0x01); 
+ 185   1       uart_string("at+cmgr=1");
+ 186   1       uart_enter();
+ 187   1       
+ 188   1       count=0;
+ 189   1       i=0;
+ 190   1       a=0;
+ 191   1       numcnt=0;
+ 192   1      
+ 193   1       while(count!=3)
+ 194   1        {
+ 195   2           while(RI==0);
+ 196   2           b=SBUF;
+ 197   2          
+ 198   2               
+ 199   2               if((b==',')||(a==1))
+ 200   2            {
+ 201   3              if(numcnt<15)
+ 202   3                  {
+ 203   4                   if(numcnt>4)
+ 204   4                    {
+ 205   5                 mobilenum[numcnt-5]=b;
+ 206   5                     }
+ 207   4                a=1;
+ 208   4                    numcnt++;
+ 209   4                      }
+ 210   3                       else
+ 211   3                          a=0;
+ 212   3                  }
+ 213   2                      if(count==2)
+ 214   2                       {
+ 215   3                        msg[i++]=SBUF;
+ 216   3                       
+ 217   3                       }
+ 218   2                  
+ 219   2                      RI=0;
+ 220   2                      if(b==10)
+ 221   2                       count+=1;
+ 222   2              }
+ 223   1                            
+ 224   1                                msg[--i]='\0';
+ 225   1                            msg[--i]='\0';
+ 226   1                            mobilenum[10]='\0';
+ 227   1                           uart_string("at+cmgd=1");
+ 228   1                  uart_enter();
+ 229   1                                       
+ 230   1       }
+ 231          
+ 232          void gsm_sendmsg(unsigned char mad[])
+ 233          {
+ 234   1                      lcd_cmd(0x01);
+ 235   1                      lcd_string("sending message");
+ 236   1      
+ 237   1                      uart_string("at+cmgs=");
+ 238   1                      uart_data('"');
+ 239   1                      uart_string(mobilenum);
+C51 COMPILER V9.01   TEST                                                                  06/07/2015 17:59:11 PAGE 5   
+
+ 240   1                      uart_data('"');
+ 241   1                      uart_enter();
+ 242   1                      uart_string(mad);
+ 243   1                      delay(100);
+ 244   1                      uart_data(0x1a);
+ 245   1                      newmsg=0;
+ 246   1                      while(newmsg==0);
+ 247   1                      newmsg=0;
+ 248   1                      delay(1500);
+ 249   1                      lcd_cmd(0x01);
+ 250   1                      lcd_string("message sent");
+ 251   1                      delay(1500);
+ 252   1      }
+ 253          
+ 254          void gsm_sendmsg_mob(unsigned char mob[], unsigned char msg1[])
+ 255          {
+ 256   1                      lcd_cmd(0x01);
+ 257   1                      lcd_string("sending message");
+ 258   1      
+ 259   1                      uart_string("at+cmgs=");
+ 260   1                      uart_data('"');
+ 261   1                      uart_string(mob);
+ 262   1                      uart_data('"');
+ 263   1                      uart_enter();
+ 264   1                      uart_string(msg1);
+ 265   1                      delay(100);
+ 266   1                      uart_data(0x1a);
+ 267   1                      newmsg=0;
+ 268   1                      while(newmsg==0);
+ 269   1                      newmsg=0;
+ 270   1                      delay(1500);
+ 271   1                      lcd_cmd(0x01);
+ 272   1                      lcd_string("message sent");
+ 273   1                      delay(1500);
+ 274   1      }
+ 275                  
+ 276          
+ 277          // Function Declarations
+ 278          
+ 279          // LCD_INIT(); 
+ 280          void lcd_init(void)
+ 281          {
+ 282   1              lcd_cmd(0x02);
+ 283   1              lcd_cmd(0x28);
+ 284   1              lcd_cmd(0x0e);
+ 285   1              lcd_cmd(0x06);
+ 286   1              lcd_cmd(0x01);
+ 287   1              lcd_cmd(0x0c);
+ 288   1      }
+ 289          
+ 290          // LCD_CMD();
+ 291          void lcd_cmd(unsigned char mad)
+ 292          {
+ 293   1        lcd=(mad)&(0xf0);
+ 294   1              rs=0;
+ 295   1              en=1;
+ 296   1              delay(3);
+ 297   1              en=0;
+ 298   1      
+ 299   1              lcd=(mad<<4)&(0xf0);
+ 300   1              rs=0;
+ 301   1              en=1;
+C51 COMPILER V9.01   TEST                                                                  06/07/2015 17:59:11 PAGE 6   
+
+ 302   1              delay(3);
+ 303   1              en=0;
+ 304   1      }
+ 305          
+ 306          //LCD_DATA();
+ 307          void lcd_data(unsigned char mad)
+ 308          {
+ 309   1        lcd=(mad)&(0xf0);
+ 310   1              rs=1;
+ 311   1              en=1;
+ 312   1              delay(3);
+ 313   1              en=0;
+ 314   1      
+ 315   1              lcd=(mad<<4)&(0xf0);
+ 316   1              rs=1;
+ 317   1              en=1;
+ 318   1              delay(3);
+ 319   1              en=0;
+ 320   1      }
+ 321          
+ 322          //LCD_STRING();
+ 323          void lcd_string(unsigned char s[])
+ 324          {
+ 325   1         unsigned int i;
+ 326   1         for(i=0;s[i]!='\0';i++)
+ 327   1         {
+ 328   2                if(i==16)    
+ 329   2                        lcd_cmd(0xc0);
+ 330   2      
+ 331   2               lcd_data(s[i]);
+ 332   2              }
+ 333   1      
+ 334   1      }
+ 335          
+ 336          //LCD_NUM();
+ 337          void lcd_num(unsigned int lcd_value)
+ 338          {
+ 339   1       unsigned int lcd_arr[10],lcd_val;
+ 340   1       
+ 341   1       for(lcd_val=1;lcd_val<5;lcd_val++)
+ 342   1       {
+ 343   2        lcd_arr[lcd_val] = lcd_value%10;
+ 344   2        lcd_value  = lcd_value/10;
+ 345   2       }
+ 346   1       
+ 347   1       for(lcd_val=4; lcd_val!=0 ; lcd_val--)                                 //sending data to LCD
+ 348   1       {
+ 349   2        lcd_data(lcd_arr[lcd_val]+48);
+ 350   2       }
+ 351   1      }
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  1 ERROR(S)

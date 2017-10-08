@@ -1,0 +1,60 @@
+C51 COMPILER V6.20c  GSM                                                                   06/06/2015 01:20:00 PAGE 1   
+
+
+C51 COMPILER V6.20c, COMPILATION OF MODULE GSM
+OBJECT MODULE PLACED IN .\gsm.OBJ
+COMPILER INVOKED BY: d:\softwares\Keil Software\C51\BIN\C51.EXE .\gsm.c DEBUG OBJECTEXTEND
+
+stmt level    source
+
+*** WARNING C500 IN LINE 1 OF .\GSM.C: MISSING DEVICE (SECURITY KEY NOT FOUND)
+   1          #include <AT89X51.H>
+   2           
+   3          void delay(unsigned int d)
+   4          {
+   5   1      unsigned int i,j;
+   6   1      for(i=0;i<=d;i++)
+   7   1      for(j=0;j<=1000;j++);
+   8   1      }
+   9          void main(void)
+  10          {
+  11   1      unsigned char z;
+  12   1      TMOD=0x20;
+  13   1      TH1=0xF3;
+  14   1      SCON=0x50;
+  15   1      TR1=1;
+  16   1      while(1)
+  17   1       
+  18   1      { 
+  19   2      for(z=65;z<=92;z++)   // 65 is equivalent code for A.
+  20   2      {
+  21   3      SBUF=z;
+  22   3      if(z==92)
+  23   3      {
+  24   4      SBUF=13; /// carriage return
+  25   4      }
+  26   3       
+  27   3      while(TI==0);
+  28   3       
+  29   3       
+  30   3      delay(50);
+  31   3      TI=0;
+  32   3       
+  33   3      }
+  34   2       
+  35   2      }
+  36   1      } 
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     71    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,146 @@
+BL51 BANKED LINKER/LOCATER V6.22                                                        06/08/2015  13:51:17  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
+D:\SOFTWARES\NEWKEI\C51\BIN\BL51.EXE transmitter.obj TO Transmitter
+
+
+MEMORY MODEL: SMALL
+
+
+INPUT MODULES INCLUDED:
+  transmitter.obj (TRANSMITTER)
+  D:\SOFTWARES\NEWKEI\C51\LIB\C51S.LIB (?C_STARTUP)
+  D:\SOFTWARES\NEWKEI\C51\LIB\C51S.LIB (?C_INIT)
+
+
+LINK MAP OF MODULE:  Transmitter (TRANSMITTER)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+            DATA    0008H     0001H     UNIT         ?DT?TRANSMITTER
+            DATA    0009H     0001H     UNIT         _DATA_GROUP_
+            IDATA   000AH     0001H     UNIT         ?STACK
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0003H     ABSOLUTE     
+            CODE    0003H     008CH     UNIT         ?C_C51STARTUP
+            CODE    008FH     0029H     UNIT         ?PR?_RF_TRANSMIT?TRANSMITTER
+            CODE    00B8H     0028H     UNIT         ?PR?READY?TRANSMITTER
+            CODE    00E0H     001DH     UNIT         ?PR?_DELAY?TRANSMITTER
+            CODE    00FDH     0011H     UNIT         ?PR?MAIN?TRANSMITTER
+            CODE    010EH     0004H     UNIT         ?C_INITSEG
+
+
+
+OVERLAY MAP OF MODULE:   Transmitter (TRANSMITTER)
+
+
+SEGMENT                                DATA_GROUP 
+  +--> CALLED SEGMENT                START    LENGTH
+----------------------------------------------------
+?C_C51STARTUP                        -----    -----
+  +--> ?PR?MAIN?TRANSMITTER
+  +--> ?C_INITSEG
+
+?PR?MAIN?TRANSMITTER                 -----    -----
+  +--> ?PR?_RF_TRANSMIT?TRANSMITTER
+  +--> ?PR?_DELAY?TRANSMITTER
+
+?PR?_RF_TRANSMIT?TRANSMITTER         0009H    0001H
+  +--> ?PR?READY?TRANSMITTER
+  +--> ?PR?_DELAY?TRANSMITTER
+
+?PR?READY?TRANSMITTER                -----    -----
+  +--> ?PR?_DELAY?TRANSMITTER
+
+
+BL51 BANKED LINKER/LOCATER V6.22                                                      06/08/2015  13:51:17  PAGE 2
+
+
+
+SYMBOL TABLE OF MODULE:  Transmitter (TRANSMITTER)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        TRANSMITTER
+  C:0000H         SYMBOL        _ICE_DUMMY_
+  D:0080H         PUBLIC        P0
+  D:00A0H         PUBLIC        P2
+  C:00B8H         PUBLIC        ready
+  C:00FDH         PUBLIC        main
+  C:008FH         PUBLIC        _rf_transmit
+  B:00A0H.0       PUBLIC        out
+  D:0008H         PUBLIC        h
+  C:00E6H         PUBLIC        _Delay
+  -------         PROC          MAIN
+  C:00FDH         LINE#         15
+  C:00FDH         LINE#         16
+  C:00FDH         LINE#         17
+  C:0100H         LINE#         19
+  C:0100H         LINE#         20
+  C:0105H         LINE#         21
+  C:010CH         LINE#         22
+  -------         ENDPROC       MAIN
+  -------         PROC          _RF_TRANSMIT
+  D:0009H         SYMBOL        i
+  C:008FH         LINE#         28
+  C:0091H         LINE#         29
+  C:0091H         LINE#         30
+  C:0094H         LINE#         31
+  C:0098H         LINE#         32
+  C:009BH         LINE#         33
+  C:009FH         LINE#         34
+  C:00A2H         LINE#         35
+  C:00A6H         LINE#         36
+  C:00A9H         LINE#         37
+  C:00ACH         LINE#         38
+  C:00AFH         LINE#         39
+  C:00B1H         LINE#         40
+  -------         ENDPROC       _RF_TRANSMIT
+  -------         PROC          READY
+  C:00B8H         LINE#         44
+  C:00B8H         LINE#         45
+  C:00B8H         LINE#         46
+  C:00BAH         LINE#         47
+  C:00C1H         LINE#         48
+  C:00C4H         LINE#         49
+  C:00C6H         LINE#         50
+  C:00C9H         LINE#         51
+  C:00CBH         LINE#         52
+  C:00CEH         LINE#         53
+  C:00D7H         LINE#         54
+  C:00D9H         LINE#         55
+  -------         ENDPROC       READY
+  C:00E0H         SYMBOL        L?0018
+  C:00E2H         SYMBOL        L?0019
+BL51 BANKED LINKER/LOCATER V6.22                                                      06/08/2015  13:51:17  PAGE 3
+
+
+  -------         PROC          L?0017
+  -------         ENDPROC       L?0017
+  C:00E0H         SYMBOL        L?0018
+  C:00E2H         SYMBOL        L?0019
+  -------         PROC          _DELAY
+  D:0006H         SYMBOL        k
+  -------         DO            
+  D:0005H         SYMBOL        l
+  -------         ENDDO         
+  C:00E6H         LINE#         62
+  C:00E6H         LINE#         63
+  C:00E6H         LINE#         75
+  C:00E8H         LINE#         76
+  C:00F2H         LINE#         77
+  C:00F8H         LINE#         78
+  C:00FAH         LINE#         81
+  C:00FCH         LINE#         82
+  -------         ENDPROC       _DELAY
+  -------         ENDMOD        TRANSMITTER
+
+Program Size: data=11.0 xdata=0 code=274
+LINK/LOCATE RUN COMPLETE.  0 WARNING(S),  0 ERROR(S)
