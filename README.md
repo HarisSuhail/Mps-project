@@ -1,13 +1,13 @@
 # Wireless Motor Control
 
-<br />
+
 Transmitter Hardware:<br />
 8051 microcontoller + power supply + crystal oscillator<br />
 Water level sensor made with 5 bipolar junction transistors<br />
 RF transmitter, 433MHz<br />
 Detects water level using a BJT circuit interfaced with 8051 port. Transmits level sensor data via 433MHz transmitter attached interfaced to 8051.<br />
 
-
+<br /><br />
 Receiver Hardware:<br />
 8051 microcontoller + power supply + crystal oscillator<br />
 LCD display<br />
