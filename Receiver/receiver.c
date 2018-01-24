@@ -21,6 +21,7 @@ sbit C1 = P2^4;
 sbit C2 = P2^5;
 sbit C3 = P2^6;
 sbit C4 = P2^7;
+//Hey
 //End Keypad Connections
 
 sbit in = P3^2; // the pin from which the data comes in
